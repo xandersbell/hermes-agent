@@ -617,6 +617,10 @@ def load_gateway_config() -> GatewayConfig:
                     os.environ["TELEGRAM_FREE_RESPONSE_CHATS"] = str(frc)
                 if "reactions" in telegram_cfg and not os.getenv("TELEGRAM_REACTIONS"):
                     os.environ["TELEGRAM_REACTIONS"] = str(telegram_cfg["reactions"]).lower()
+                if "allow_from" in telegram_cfg and not os.getenv("TELEGRAM_ALLOWED_USERS"):
+                    os.environ["TELEGRAM_ALLOWED_USERS"] = str(telegram_cfg["allow_from"])
+                if "group_allow_from" in telegram_cfg and not os.getenv("TELEGRAM_GROUP_ALLOWED_USERS"):
+                    os.environ["TELEGRAM_GROUP_ALLOWED_USERS"] = str(telegram_cfg["group_allow_from"])
 
             whatsapp_cfg = yaml_cfg.get("whatsapp", {})
             if isinstance(whatsapp_cfg, dict):

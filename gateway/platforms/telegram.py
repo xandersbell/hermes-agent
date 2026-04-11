@@ -160,6 +160,24 @@ class TelegramAdapter(BasePlatformAdapter):
         self._model_picker_state: Dict[str, dict] = {}
         # Approval button state: message_id → session_key
         self._approval_state: Dict[int, str] = {}
+        allow_from = self.config.extra.get("allow_from")
+        if allow_from is None:
+            allow_from = os.getenv("TELEGRAM_ALLOWED_USERS", "")
+        group_allow_from = self.config.extra.get("group_allow_from")
+        if group_allow_from is None:
+            group_allow_from = os.getenv("TELEGRAM_GROUP_ALLOWED_USERS", "")
+        self._allow_from = self._coerce_list(allow_from)
+        self._group_allow_from = self._coerce_list(group_allow_from)
+
+    @staticmethod
+    def _coerce_list(value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        if isinstance(value, (list, tuple, set)):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return [str(value).strip()] if str(value).strip() else []
 
     def _fallback_ips(self) -> list[str]:
         """Return validated fallback IPs from config (populated by _apply_env_overrides)."""
@@ -2120,7 +2138,15 @@ class TelegramAdapter(BasePlatformAdapter):
         - the bot is @mentioned
         - the text/caption matches a configured regex wake-word pattern
         """
-        if not self._is_group_chat(message):
+        is_group = self._is_group_chat(message)
+        sender_id = str(getattr(getattr(message, "from_user", None), "id", "") or "")
+        if is_group:
+            if self._group_allow_from and "*" not in self._group_allow_from and sender_id not in self._group_allow_from:
+                return False
+        else:
+            if self._allow_from and "*" not in self._allow_from and sender_id not in self._allow_from:
+                return False
+        if not is_group:
             return True
         if str(getattr(getattr(message, "chat", None), "id", "")) in self._telegram_free_response_chats():
             return True
