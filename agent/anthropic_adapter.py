@@ -1262,14 +1262,22 @@ def build_anthropic_kwargs(
 
         # 2. Sanitize system prompt — replace product name references
         #    to avoid Anthropic's server-side content filters.
-        for block in system:
-            if isinstance(block, dict) and block.get("type") == "text":
-                text = block.get("text", "")
-                text = text.replace("Hermes Agent", "Claude Code")
-                text = text.replace("Hermes agent", "Claude Code")
-                text = text.replace("hermes-agent", "claude-code")
-                text = text.replace("Nous Research", "Anthropic")
-                block["text"] = text
+        #    Skip this when using a non-native Anthropic provider (MiniMax,
+        #    OpenRouter, etc.) — the replacement corrupts the agent's self-
+        #    awareness (wrong identity, wrong source paths) and serves no
+        #    purpose outside Anthropic's own API endpoints.
+        skip_name_sanitization = os.environ.get(
+            "SKIP_ANTHROPIC_NAME_SANITIZATION", ""
+        ).lower() in ("1", "true", "yes")
+        if not skip_name_sanitization:
+            for block in system:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text = block.get("text", "")
+                    text = text.replace("Hermes Agent", "Claude Code")
+                    text = text.replace("Hermes agent", "Claude Code")
+                    text = text.replace("hermes-agent", "claude-code")
+                    text = text.replace("Nous Research", "Anthropic")
+                    block["text"] = text
 
         # 3. Prefix tool names with mcp_ (Claude Code convention)
         if anthropic_tools:
